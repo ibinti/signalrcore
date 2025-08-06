@@ -134,7 +134,7 @@ class WebSocketClient(object):
         self.recv_thread.daemon = True
         self.recv_thread.start()
     
-    def _recv_loop(self):
+    def _recv_loop_test(self):
         self.on_open()
         buffer = ""
         try:
@@ -159,7 +159,7 @@ class WebSocketClient(object):
                 self.logger.error(f"Receive error: {e}")
             self.on_error(e)
 
-    def _recv_loop_old(self):
+    def _recv_loop(self):
         self.on_open()
         try:
             while self.running:
