@@ -193,7 +193,7 @@ class WebSocketClient(object):
                 raise NoHeaderException("Socket closed before full message received.")
             data += chunk
         return data
-    def _recv_frame(self):
+    def _recv_frame_test(self):
         # Very basic, single-frame, unfragmented
         header = self._recv_exact(2)
         if not header:
@@ -223,7 +223,7 @@ class WebSocketClient(object):
     
         return data if self.is_binary else data.decode("utf-8")
 
-    def _recv_frame_old(self):
+    def _recv_frame(self):
         # Very basic, single-frame, unfragmented
         header = self.sock.recv(2)
         if not header:
