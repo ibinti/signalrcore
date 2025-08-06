@@ -159,6 +159,15 @@ class WebSocketClient(object):
             if self.logger:
                 self.logger.error(f"Receive error: {e}")
             self.on_error(e)
+    
+    def _recv_exact(self, size):
+        data = b''
+        while len(data) < size:
+            chunk = self.sock.recv(size - len(data))
+            if not chunk:
+                raise NoHeaderException("Socket closed before full message received.")
+            data += chunk
+        return data
 
     def _recv_frame(self):
         # Very basic, single-frame, unfragmented
@@ -181,12 +190,12 @@ class WebSocketClient(object):
 
         if masked_len & 0x80:
             masking_key = self.sock.recv(4)
-            masked_data = self.sock.recv(payload_len)
+            masked_data = self._recv_exact(payload_len)
             data = bytes(
                 b ^ masking_key[i % 4]
                 for i, b in enumerate(masked_data))
         else:
-            data = self.sock.recv(payload_len)
+            data = self._recv_exact(payload_len)
 
         if self.is_trace_enabled:
             self.logger.debug(data)
