@@ -168,8 +168,37 @@ class WebSocketClient(object):
                 raise NoHeaderException("Socket closed before full message received.")
             data += chunk
         return data
-
     def _recv_frame(self):
+        # Very basic, single-frame, unfragmented
+        header = self._recv_exact(2)
+        if not header:
+            raise NoHeaderException()
+    
+        fin_opcode = header[0]
+        masked_len = header[1]
+    
+        if self.logger:
+            self.logger.debug(f"fin opcode: {fin_opcode}, masked len: {masked_len}")
+    
+        payload_len = masked_len & 0x7F
+        if payload_len == 126:
+            payload_len = struct.unpack(">H", self._recv_exact(2))[0]
+        elif payload_len == 127:
+            payload_len = struct.unpack(">Q", self._recv_exact(8))[0]
+    
+        if masked_len & 0x80:
+            masking_key = self._recv_exact(4)
+            masked_data = self._recv_exact(payload_len)
+            data = bytes(b ^ masking_key[i % 4] for i, b in enumerate(masked_data))
+        else:
+            data = self._recv_exact(payload_len)
+    
+        if self.is_trace_enabled:
+            self.logger.debug(data)
+    
+        return data if self.is_binary else data.decode("utf-8")
+
+    def _recv_frame_old(self):
         # Very basic, single-frame, unfragmented
         header = self.sock.recv(2)
         if not header:
