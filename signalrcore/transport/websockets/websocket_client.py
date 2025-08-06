@@ -133,8 +133,33 @@ class WebSocketClient(object):
             name=THREAD_NAME)
         self.recv_thread.daemon = True
         self.recv_thread.start()
-
+    
     def _recv_loop(self):
+        self.on_open()
+        buffer = ""
+        try:
+            while self.running:
+                message_part = self._recv_frame()
+                if self.is_binary:
+                    self.on_message(self, message_part)  # MessagePack: pass as-is
+                else:
+                    buffer += message_part
+                    try:
+                        # Try parse: SignalR JSON messages end with ASCII 0x1E
+                        while "\x1e" in buffer:
+                            msg, buffer = buffer.split("\x1e", 1)
+                            if self.on_message:
+                                self.on_message(self, msg)
+                    except Exception as e:
+                        self.logger.error(f"Buffered JSON decode failed: {e}")
+                        continue
+        except Exception as e:
+            self.running = False
+            if self.logger:
+                self.logger.error(f"Receive error: {e}")
+            self.on_error(e)
+
+    def _recv_loop_old(self):
         self.on_open()
         try:
             while self.running:
